@@ -52,4 +52,30 @@ DELIMITER ;
 
 
 
+- Query de MySql para obtener cuotas por mes (procedure asistencia_pivot_by_date)
+- Procedure para obtener cuotas por mes especiificado de alumnos que asistieron al menos una vez
+
+delimiter $$
+create procedure cuotas_x_mes(in month_number int, in year_number int)
+BEGIN
+drop temporary table if exists asistencia_nula_mes_anio;
+create temporary table asistencia_nula_mes_anio as (
+select j.id_jugador from jugador j
+cross join practica p
+left join jugador_practica jp on jp.id_jugador = j.id_jugador and jp.id_practica=p.id_practica
+where month(p.fecha_practica) = 1 and year(p.fecha_practica)= 2026
+group by j.id_jugador
+having count(jp.id_practica)=0
+);
+
+select concat(j.nombre, ' ',j.apellido) as 'Nombre y Apellido',c.fecha_cuota,c.valor,c.detalle_pago
+from jugador j
+left join cuota c on c.id_jugador = j.id_jugador
+and year(c.fecha_cuota) = year_number and month(c.fecha_cuota) = month_number
+where j.id_jugador not in (select id_jugador from asistencia_nula_mes_anio);
+END $$
+delimiter ;
+
+
+
 
