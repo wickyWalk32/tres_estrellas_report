@@ -30,81 +30,98 @@ cursor.close()
 conn.close()
 
 headers = [col[0] for col in cursor.description] # ['jugador', fecha1,fecha2,...]
+
 excel_data = [list(headers)] + [list(x) for x in data]
-
 file_path = "Asistencia.xlsx"
-wb = Workbook()
-ws = wb.active
 
-for row in excel_data:
-    ws.append(row)
-wb.save(file_path)
+def crear_archivo(excel_data,path_file):
+    wb = Workbook()
+    ws = wb.active
 
-# Cargar Excel existente (previamente creado)
-wb = load_workbook(file_path)
-ws = wb.active
-for i, col in enumerate(ws.iter_cols(min_row=1, max_row=1)):
-    col_letter = get_column_letter(i + 1)
-    ws.column_dimensions[col_letter].width = 20 if i == 0 else 12
+    for row in excel_data:
+        ws.append(row)
+    wb.save(path_file)
+    generar_grafico(excel_data,file_path)
 
 
+    # Cargar Excel existente (previamente creado)
+    wb = load_workbook(path_file)
+    ws = wb.active
+    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=1)):
+        col_letter = get_column_letter(i + 1)
+        ws.column_dimensions[col_letter].width = 20 if i == 0 else 12
+    wb.save(path_file)
+    print("Archivo Generado")
+
+
+def generar_grafico(excel_data,path_file: str):
+    wb = load_workbook(path_file)
+    ws = wb.active
 # Grafico de Columnas Apiladas
-chart = BarChart()
-chart.type = "col"
-chart.style = 10
-chart.title = "Asistencia"
-chart.grouping = "stacked"
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "Asistencia"
+    chart.grouping = "stacked"
 
 
-chart.width = 2*len(excel_data)/3    # default 15
-chart.height = 25   # default 7.5
-chart.layout = Layout(
-    ManualLayout( x=0.10, y=0.15, h=0.8, w=0.8, xMode="edge", yMode="edge",)
-)
-chart.legend.position = "b"  # bottom
+    chart.width = 2 * len(excel_data) / 3    # default 15
+    chart.height = 25   # default 7.5
+    chart.layout = Layout(
+        ManualLayout( x=0.10, y=0.15, h=0.8, w=0.8, xMode="edge", yMode="edge",)
+    )
+    chart.legend.position = "b"  # bottom
 
-#Forzar a que aparezcan los ejes (asistencias y nombres)
-chart.x_axis.delete = False
-chart.y_axis.delete = False
+    #Forzar a que aparezcan los ejes (asistencias y nombres)
+    chart.x_axis.delete = False
+    chart.y_axis.delete = False
 
-chart.overlap = 100
-chart.gapWidth = 85
-chart.y_axis.majorUnit = 1
+    chart.overlap = 100
+    chart.gapWidth = 85
+    chart.y_axis.majorUnit = 1
 
 
-data_ref = Reference(ws, min_col=2, max_col=ws.max_column, min_row=1, max_row=ws.max_row)
-cats_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
-chart.add_data(data_ref, titles_from_data=True)
-chart.set_categories(cats_ref)
+    data_ref = Reference(ws, min_col=2, max_col=ws.max_column, min_row=1, max_row=ws.max_row)
+    cats_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
+    chart.add_data(data_ref, titles_from_data=True)
+    chart.set_categories(cats_ref)
 
-excel_chart_position = "A" + str(len(excel_data)+2)
-ws.add_chart(chart, excel_chart_position)
+    excel_chart_position = "A" + str(len(excel_data)+2)
+    ws.add_chart(chart, excel_chart_position)
 
-wb.save(file_path)
+    wb.save(path_file)
+    print("Grafico Generado")
+
+
+crear_archivo(excel_data,file_path)
+generar_grafico(excel_data, file_path)
 
 #fecha = fechas[i][0].strftime('%d-%m-%Y')
 
-# Coneccion para obtener asistencias x mes
-conn = mysql.connector.connect(
-    host="localhost",        # Database server address
-   #port=port_number,    # specify only if default 3306 port is not the one being used
-    user=user_name,
-    password=password,
-    database=db_name
-)
-cursor2 = conn.cursor(buffered=True)
-cursor2.execute("SET SESSION group_concat_max_len = 1000000")
-month = 1
-year = 2026
-cursor2.execute("CALL asistencia_pivot_by_date(%s, %s)", (month, year))
-data = cursor2.fetchall()
-print(data)
-cursor2.close()
-conn.close()
+def crear_excel_asistencia(month,year):
+    # Coneccion para obtener asistencias x mes
+    conn = mysql.connector.connect(
+        host="localhost",        # Database server address
+       #port=port_number,    # specify only if default 3306 port is not the one being used
+        user=user_name,
+        password=password,
+        database=db_name
+    )
+    cursor2 = conn.cursor(buffered=True)
+    cursor2.execute("SET SESSION group_concat_max_len = 1000000")
 
-meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-print(meses[1])
-text = 'hola me llamno ' + meses[1] + ' ' + str(2026)
-print(text)
-# def crear_excel_asistencia(tipo_excel,mes,anio):
-# tipo_excel = 0. asistencia total, tipo_excel = 1. asistencia mensual (incluir valor de ,es y anio)
+    cursor2.execute("CALL asistencia_pivot_by_date(%s, %s)", (month, year))
+    data = cursor2.fetchall()
+
+    cursor2.close()
+    conn.close()
+
+    meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    file_path = "Asistencia " + meses[month-1] + ".xlsx"
+    headers = [col[0] for col in cursor2.description] # ['jugador', fecha1,fecha2,...]
+    excel_data = [list(headers)] + [list(x) for x in data]
+
+    crear_archivo(excel_data,file_path)
+    generar_grafico(excel_data,file_path)
+
+    return file_path
