@@ -10,10 +10,11 @@ load_dotenv()
 user_name = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
+db_host = os.getenv("DB_HOST")
 
 def crear_excel_cuota(month,year):
     conn = mysql.connector.connect(
-        host = "localhost",
+        host = db_host,
         user = user_name,
         password = password,
         database = db_name

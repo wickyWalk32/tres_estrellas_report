@@ -11,10 +11,13 @@ load_dotenv()
 user_name = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
+db_host = os.getenv("DB_HOST")
+
 
 conn = mysql.connector.connect(
-    host="localhost",        # Database server address
+    #host="localhost",        # Database server address
    #port=port_number,    # specify only if default 3306 port is not the one being used
+    host="localhost",
     user=user_name,
     password=password,
     database=db_name
@@ -41,7 +44,7 @@ def crear_archivo(excel_data,path_file):
     for row in excel_data:
         ws.append(row)
     wb.save(path_file)
-    generar_grafico(excel_data,file_path)
+    # generar_grafico(excel_data,file_path)
 
 
     # Cargar Excel existente (previamente creado)
@@ -101,7 +104,7 @@ generar_grafico(excel_data, file_path)
 def crear_excel_asistencia(month,year):
     # Coneccion para obtener asistencias x mes
     conn = mysql.connector.connect(
-        host="localhost",        # Database server address
+        host=db_host,        # Database server address
        #port=port_number,    # specify only if default 3306 port is not the one being used
         user=user_name,
         password=password,

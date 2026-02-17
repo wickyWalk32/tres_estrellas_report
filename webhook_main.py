@@ -35,10 +35,11 @@ def send_excel(id_grupo: str, mensaje: str):
     body = {
         "number": id_grupo,
         "mediatype": "document",
-        "caption": "Here’s the Excel file",
+        "caption": "Archivo Excel",
         "media": f"{encoded_file}",
         "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "fileName": file_path
+        "fileName": file_path,
+        "delay": 1200,
     }
 
     response = requests.post(url, json=body, headers=headers)

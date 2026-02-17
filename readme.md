@@ -8,7 +8,25 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 (in venv) python main.py                     # Ejecuar el codigo
 
 
-- Archivo .env
+
+( En carpta de Dockerfile ) Crear imagen
+docker build -t reporte_tres_estrellas .
+
+Ejecutar imagen en contenedor
+docker run -p 5000:5000 --env-file .env reporte_tres_estrellas
+
+
+
+
+
+
+
+
+
+
+
+
+- Archivo .env  VARIABLES DE AMBIENTE
 
 
 EVOLUTION_API_URL= http://localhost:9090 (ejemplo) // url donde se ejecuta evolution api
