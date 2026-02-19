@@ -9,14 +9,21 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 
 
 
+(en carpeta de docker-compose.yaml de evolution api)
+docker compose up
+
 ( En carpta de Dockerfile ) Crear imagen
 docker build -t reporte_tres_estrellas .
 
-Ejecutar imagen en contenedor
-docker run -p 5000:5000 --env-file .env reporte_tres_estrellas
+
+docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tres_estrellas
+(muy importante ponerle el nombre al contenedor)
+
+Conectar app a la network de evolution-api
+docker network connect 827e50744787 reporte_tres_estrellas
 
 
-
+docker rm -f reporte_tres_estrellas    # Remover contenedor (de ser necesario)
 
 
 
@@ -54,68 +61,120 @@ EVOLUTION API & WEBHOOK
 
 
 
-BASE DE DATOS MYSQL
-- Query de MySql para obtener asistencia por mes (procedure asistencia_pivot_by_date)
+BASE DE DATOS PostgreSQL
+- Query de PostgreSql para obtener asistencia por mes (procedure asistencia_pivot_by_date)
 
-    DELIMITER $$
-    CREATE PROCEDURE asistencia_pivot_by_date(in month_number int, in year_number int)
-    BEGIN
-    
-    DECLARE cols TEXT;
-    SELECT GROUP_CONCAT( DISTINCT
-    CONCAT('MAX(CASE WHEN p.id_practica = ',
-     p.id_practica, ' AND a.id_practica IS NOT NULL 
-     THEN 1 ELSE 0 END) AS `',
-     p.fecha_practica,'`	')
-     order by p.fecha_practica asc
-        ) INTO cols
-        FROM practica p
-        where month(p.fecha_practica) = month_number 
-        and year(p.fecha_practica) = year_number;
-        
+CREATE OR REPLACE FUNCTION asistencia_pivot_by_date(month_number INT, year_number INT)
+RETURNS JSON AS
+$$
+DECLARE
+    cols TEXT;
+    sql TEXT;
+    result JSON;
+BEGIN
+    -- 1️⃣ Build dynamic column list (ordered by date)
+    SELECT string_agg(
+               format('"%s" INT', to_char(fecha_practica, 'YYYY-MM-DD')),
+               ', ' ORDER BY fecha_practica
+           )
+    INTO cols
+    FROM (
+        SELECT DISTINCT fecha_practica
+        FROM practica
+        WHERE EXTRACT(MONTH FROM fecha_practica) = month_number
+          AND EXTRACT(YEAR FROM fecha_practica) = year_number
+        ORDER BY fecha_practica
+    ) sub;
 
-    SET @sql = CONCAT(
-        'SELECT CONCAT(j.nombre, '' '', j.apellido) AS jugador, ', cols, '
+    -- 2️⃣ Build dynamic SQL
+    sql := format(
+    $f$
+    SELECT json_agg(row_to_json(final_rows))
+    FROM (
+        SELECT
+            j.nombre || ' ' || j.apellido AS jugador,
+            ct.*
+        FROM crosstab(
+            $c$
+            SELECT
+                j.id_jugador,
+                p.fecha_practica::TEXT,
+                CASE WHEN a.id_practica IS NOT NULL THEN 1 ELSE 0 END
+            FROM jugador j
+            CROSS JOIN practica p
+            LEFT JOIN jugador_practica a
+              ON a.id_jugador = j.id_jugador
+             AND a.id_practica = p.id_practica
+            WHERE EXTRACT(MONTH FROM p.fecha_practica) = %1$s
+              AND EXTRACT(YEAR FROM p.fecha_practica) = %2$s
+            ORDER BY 1,2
+            $c$,
+            $v$
+            SELECT DISTINCT fecha_practica::TEXT
+            FROM practica
+            WHERE EXTRACT(MONTH FROM fecha_practica) = %1$s
+              AND EXTRACT(YEAR FROM fecha_practica) = %2$s
+            ORDER BY fecha_practica
+            $v$
+        ) AS ct(id_jugador INT, %3$s)
+        JOIN jugador j ON j.id_jugador = ct.id_jugador
+        ORDER BY j.apellido, j.nombre
+    ) final_rows
+    $f$, month_number, year_number, cols);
+
+    -- 3️⃣ Execute and return JSON
+    EXECUTE sql INTO result;
+    RETURN result;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+
+
+
+- Query de PostgreSQL para obtener cuotas por mes (cuotas_x_mes)
+- Procedure para obtener cuotas por mes de alumnos que asistieron al menos una vez dicho mes
+
+CREATE OR REPLACE FUNCTION cuotas_x_mes(
+    month_number INT,
+    year_number INT
+)
+RETURNS TABLE(
+    nombre_y_apellido TEXT,
+    fecha_cuota DATE,
+    valor NUMERIC,
+    detalle_pago VARCHAR(200)
+) 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH asistencia_nula_mes_anio AS (
+        SELECT j.id_jugador
         FROM jugador j
         CROSS JOIN practica p
-        LEFT JOIN jugador_practica a ON a.id_jugador = j.id_jugador
-		AND a.id_practica = p.id_practica
+        LEFT JOIN jugador_practica jp 
+            ON jp.id_jugador = j.id_jugador 
+            AND jp.id_practica = p.id_practica
+        WHERE EXTRACT(MONTH FROM p.fecha_practica) = month_number
+          AND EXTRACT(YEAR FROM p.fecha_practica) = year_number
         GROUP BY j.id_jugador
-        ORDER BY j.id_jugador'
-    );
-
-    PREPARE stmt FROM @sql;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-    END$$
-    DELIMITER ;
-
-
-
-
-- Query de MySql para obtener cuotas por mes (procedure asistencia_pivot_by_date)
-- Procedure para obtener cuotas por mes especiificado de alumnos que asistieron al menos una vez
-
-delimiter $$
-create procedure cuotas_x_mes(in month_number int, in year_number int)
-BEGIN
-drop temporary table if exists asistencia_nula_mes_anio;
-create temporary table asistencia_nula_mes_anio as (
-select j.id_jugador from jugador j
-cross join practica p
-left join jugador_practica jp on jp.id_jugador = j.id_jugador and jp.id_practica=p.id_practica
-where month(p.fecha_practica) = 1 and year(p.fecha_practica)= 2026
-group by j.id_jugador
-having count(jp.id_practica)=0
-);
-
-select concat(j.nombre, ' ',j.apellido) as 'Nombre y Apellido',c.fecha_cuota,c.valor,c.detalle_pago
-from jugador j
-left join cuota c on c.id_jugador = j.id_jugador
-and year(c.fecha_cuota) = year_number and month(c.fecha_cuota) = month_number
-where j.id_jugador not in (select id_jugador from asistencia_nula_mes_anio);
-END $$
-delimiter ;
+        HAVING COUNT(jp.id_practica) = 0
+    )
+    SELECT 
+        CONCAT(j.nombre, ' ', j.apellido) AS nombre_y_apellido,
+        c.fecha_cuota,
+        c.valor,
+        c.detalle_pago
+    FROM jugador j
+    LEFT JOIN cuota c 
+        ON c.id_jugador = j.id_jugador
+        AND EXTRACT(YEAR FROM c.fecha_cuota) = year_number
+        AND EXTRACT(MONTH FROM c.fecha_cuota) = month_number
+    WHERE j.id_jugador NOT IN (SELECT id_jugador FROM asistencia_nula_mes_anio);
+END;
+$$;
 
 
 

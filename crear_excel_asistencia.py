@@ -5,6 +5,7 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.chart.layout import Layout, ManualLayout
 from dotenv import load_dotenv
 import os
+import psycopg2
 
 load_dotenv()
 
@@ -13,29 +14,29 @@ password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 db_host = os.getenv("DB_HOST")
 
+def get_all_asistencias():
+    conn = psycopg2.connect(
+        #host="localhost",        # Database server address
+       #port=port_number,    # specify only if default 3306 port is not the one being used
+        host="localhost",
+        user=user_name,
+        password=password,
+        database=db_name
+    )
+    cursor = conn.cursor(buffered=True) # Para ejecutar SQL queries
 
-conn = mysql.connector.connect(
-    #host="localhost",        # Database server address
-   #port=port_number,    # specify only if default 3306 port is not the one being used
-    host="localhost",
-    user=user_name,
-    password=password,
-    database=db_name
-)
-cursor = conn.cursor(buffered=True) # Para ejecutar SQL queries
 
+    cursor.execute("select * from asistencia_pivot()")
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
 
-cursor.execute("SET SESSION group_concat_max_len = 1000000") # evitar esto: mysql.connector.errors.DatabaseError: 1260 (HY000): Row 11 was cut by GROUP_CONCAT()
-#cursor.callproc("asistencia_pivot") # rocorrerlo con el fetchall() para evitar excel_data=[]
-cursor.execute("CALL asistencia_pivot()")
-data = cursor.fetchall()
-cursor.close()
-conn.close()
+    headers = [col[0] for col in cursor.description] # ['jugador', fecha1,fecha2,...]
 
-headers = [col[0] for col in cursor.description] # ['jugador', fecha1,fecha2,...]
+    excel_data = [list(headers)] + [list(x) for x in data]
+    file_path = "Asistencia.xlsx"
+    return file_path
 
-excel_data = [list(headers)] + [list(x) for x in data]
-file_path = "Asistencia.xlsx"
 
 def crear_archivo(excel_data,path_file):
     wb = Workbook()
@@ -95,35 +96,45 @@ def generar_grafico(excel_data,path_file: str):
     wb.save(path_file)
     print("Grafico Generado")
 
-
-crear_archivo(excel_data,file_path)
-generar_grafico(excel_data, file_path)
+# get_all_asistencias()
+# crear_archivo(excel_data,file_path)
+# generar_grafico(excel_data, file_path)
 
 #fecha = fechas[i][0].strftime('%d-%m-%Y')
 
 def crear_excel_asistencia(month,year):
     # Coneccion para obtener asistencias x mes
-    conn = mysql.connector.connect(
+    conn = psycopg2.connect(
         host=db_host,        # Database server address
        #port=port_number,    # specify only if default 3306 port is not the one being used
         user=user_name,
         password=password,
         database=db_name
     )
-    cursor2 = conn.cursor(buffered=True)
-    cursor2.execute("SET SESSION group_concat_max_len = 1000000")
+    cursor2 = conn.cursor()
 
-    cursor2.execute("CALL asistencia_pivot_by_date(%s, %s)", (month, year))
+    cursor2.execute("select * from asistencia_pivot_by_date(%s, %s)", (month, year))
     data = cursor2.fetchall()
-
+    print(data[0][0])
     cursor2.close()
     conn.close()
 
     meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
     file_path = "Asistencia " + meses[month-1] + ".xlsx"
-    headers = [col[0] for col in cursor2.description] # ['jugador', fecha1,fecha2,...]
-    excel_data = [list(headers)] + [list(x) for x in data]
 
+    players = data[0][0]
+    players_sorted = sorted(players, key=lambda x: x['id_jugador'])
+
+    date_keys = sorted(
+        k for k in players_sorted[0]
+        if k not in ('jugador', 'id_jugador')
+    )
+
+    rows = [ [ p['jugador']] + [p[d] for d in date_keys] for p in players_sorted ]
+
+    header = ['Jugador'] + date_keys
+    excel_data = [header] + rows
+    # print(excel_data)
     crear_archivo(excel_data,file_path)
     generar_grafico(excel_data,file_path)
 

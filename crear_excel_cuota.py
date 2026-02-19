@@ -1,5 +1,6 @@
 import mysql.connector
 import os
+import psycopg2
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment
@@ -13,15 +14,15 @@ db_name = os.getenv("DB_NAME")
 db_host = os.getenv("DB_HOST")
 
 def crear_excel_cuota(month,year):
-    conn = mysql.connector.connect(
+    conn = psycopg2.connect(
         host = db_host,
         user = user_name,
         password = password,
         database = db_name
     )
 
-    cursor = conn.cursor(buffered=True)
-    cursor.execute("CALL cuotas_x_mes(%s,%s)",(month,year))
+    cursor = conn.cursor()
+    cursor.execute("select * from cuotas_x_mes(%s,%s)",(month,year))
     excel_data = cursor.fetchall()
 
     meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
