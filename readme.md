@@ -5,12 +5,26 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 (in venv) pip install -r requirements.txt    # Instalar las librerias especificadas en requirements.txt
 (in venv) pip install library_name           # Instalar las librerias
 (in venv) pip freeze > requirements.txt      # Guardar librerias instaladas
-(in venv) python main.py                     # Ejecuar el codigo
+(in venv) python webhook_main.py                     # Ejecuar el codigo
 
 
 
-(en carpeta de docker-compose.yaml de evolution api)
-docker compose up
+INICIAR PROJECTO
+
+Docker compose (forma recomendada)  
+1- Setear las varibles de ambiente.  
+2- ir a la carpeta reporte_docker_compose --> cd main_app_compose  
+    docker compose up  
+3- luego en otro terminal: docker exec -it postgres_container bash
+                        psql -U super_user_name -c "create database db_name;"
+                        psql -U super_user_name -d db_name -f /backup.sql
+
+
+Docker Vainilla
+1- docker compose up  (en carpeta de archivo compose de evolution api) ./evolution_compose
+2- dockerizar app (usando dockerfile)
+(en carpeta de docker-compose.yaml de evolution api)  
+docker compose up  
 
 ( En carpta de Dockerfile ) Crear imagen
 docker build -t reporte_tres_estrellas .
@@ -20,12 +34,22 @@ docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tr
 (muy importante ponerle el nombre al contenedor)
 
 Conectar app a la network de evolution-api
-docker network connect 827e50744787 reporte_tres_estrellas
+docker network connect network_id reporte_tres_estrellas
 
 
 docker rm -f reporte_tres_estrellas    # Remover contenedor (de ser necesario)
 
 
+docker stop reporte_tres_estrellas      # Pausar contenedor
+docker start reporte_tres_estrellas -a      # Ejecutar contenedor y ver los LOGS
+
+
+
+Si existe una db previa
+docker exec -i evolution_postgres psql -U evolution -d tres_estrellas_fc < tres_estrellas_fc.sql
+docker exec -i evolution_postgres pg_restore -U evolution -d tres_estrellas_fc < tres_estrellas_fc.dump
+docker cp tres_estrellas_fc.dump evolution_postgres:/tres_estrellas_fc.dump
+docker exec -it evolution_postgres pg_restore -U evolution -d tres_estrellas_fc /tres_estrellas_fc.dump
 
 
 
@@ -33,12 +57,18 @@ docker rm -f reporte_tres_estrellas    # Remover contenedor (de ser necesario)
 
 
 
+
+
+
+- 
 - Archivo .env  VARIABLES DE AMBIENTE
 
 
 EVOLUTION_API_URL= http://localhost:9090 (ejemplo) // url donde se ejecuta evolution api
 WHATSAPP_GRUPO_ID_SECRETARIA_TRES_ESTRELLAS=numero@g.us //id del grupo tres estrellas
 
+en EVOLUTION API
+webhook url: http://reporte_tres_estrellas:5000/webhook
 
 
 EVOLUTION API & WEBHOOK
@@ -63,6 +93,7 @@ EVOLUTION API & WEBHOOK
 
 BASE DE DATOS PostgreSQL
 - Query de PostgreSql para obtener asistencia por mes (procedure asistencia_pivot_by_date)
+´´´
 
 CREATE OR REPLACE FUNCTION asistencia_pivot_by_date(month_number INT, year_number INT)
 RETURNS JSON AS
@@ -72,7 +103,7 @@ DECLARE
     sql TEXT;
     result JSON;
 BEGIN
-    -- 1️⃣ Build dynamic column list (ordered by date)
+    -- dynamic column list (ordered by date)
     SELECT string_agg(
                format('"%s" INT', to_char(fecha_practica, 'YYYY-MM-DD')),
                ', ' ORDER BY fecha_practica
@@ -86,7 +117,7 @@ BEGIN
         ORDER BY fecha_practica
     ) sub;
 
-    -- 2️⃣ Build dynamic SQL
+
     sql := format(
     $f$
     SELECT json_agg(row_to_json(final_rows))
@@ -122,20 +153,19 @@ BEGIN
     ) final_rows
     $f$, month_number, year_number, cols);
 
-    -- 3️⃣ Execute and return JSON
     EXECUTE sql INTO result;
     RETURN result;
 END;
 $$
 LANGUAGE plpgsql;
-
+´´´
 
 
 
 
 - Query de PostgreSQL para obtener cuotas por mes (cuotas_x_mes)
 - Procedure para obtener cuotas por mes de alumnos que asistieron al menos una vez dicho mes
-
+´´´
 CREATE OR REPLACE FUNCTION cuotas_x_mes(
     month_number INT,
     year_number INT
@@ -175,7 +205,7 @@ BEGIN
     WHERE j.id_jugador NOT IN (SELECT id_jugador FROM asistencia_nula_mes_anio);
 END;
 $$;
-
+´´´
 
 
 
