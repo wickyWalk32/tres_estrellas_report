@@ -14,17 +14,11 @@ services:
       - redis
     networks:
       - evolution-network
-    environment:
-      AUTHENTICATION_API_KEY: C392AD3EKAJS7ASHFB84SFBSD98SDVJKBK
 
   postgres:
     image: postgres:15
     container_name: evolution_postgres
     restart: always
-    environment:
-      POSTGRES_DB: evolution
-      POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: evolution_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:

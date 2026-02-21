@@ -1,39 +1,42 @@
 Para inicializar la aplicacion
-
+```
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 (in venv) pip install -r requirements.txt    # Instalar las librerias especificadas en requirements.txt
 (in venv) pip install library_name           # Instalar las librerias
 (in venv) pip freeze > requirements.txt      # Guardar librerias instaladas
 (in venv) python webhook_main.py                     # Ejecuar el codigo
+```
 
 
+## INICIAR PROJECTO
 
-INICIAR PROJECTO
-
-Docker compose (forma recomendada)  
-1- Setear las varibles de ambiente.  
-2- ir a la carpeta reporte_docker_compose --> cd main_app_compose  
+### A) Docker compose (forma recomendada)
+```bash
+# 1- Setear las varibles de ambiente.  
+# 2- ir a la carpeta reporte_docker_compose --> cd main_app_compose  
     docker compose up  
-3- luego en otro terminal: docker exec -it postgres_container bash
+# 3- luego en otro terminal: docker exec -it postgres_container bash
                         psql -U super_user_name -c "create database db_name;"
                         psql -U super_user_name -d db_name -f /backup.sql
+```
 
-
-Docker Vainilla
-1- docker compose up  (en carpeta de archivo compose de evolution api) ./evolution_compose
-2- dockerizar app (usando dockerfile)
-(en carpeta de docker-compose.yaml de evolution api)  
+### B) Dockerfile (docker build)
+```bash
+# 1- docker compose up  (en carpeta de archivo compose de evolution api) ./evolution_compose
+# 2- dockerizar app (usando dockerfile)
+#(en carpeta de docker-compose.yaml de evolution api)  
 docker compose up  
 
-( En carpta de Dockerfile ) Crear imagen
+# ( En carpta de Dockerfile ) Crear imagen
 docker build -t reporte_tres_estrellas .
 
 
 docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tres_estrellas
-(muy importante ponerle el nombre al contenedor)
+# (muy importante ponerle el nombre al contenedor)
 
-Conectar app a la network de evolution-api
+```bash
+# Conectar app a la network de evolution-api
 docker network connect network_id reporte_tres_estrellas
 
 
@@ -50,7 +53,7 @@ docker exec -i evolution_postgres psql -U evolution -d tres_estrellas_fc < tres_
 docker exec -i evolution_postgres pg_restore -U evolution -d tres_estrellas_fc < tres_estrellas_fc.dump
 docker cp tres_estrellas_fc.dump evolution_postgres:/tres_estrellas_fc.dump
 docker exec -it evolution_postgres pg_restore -U evolution -d tres_estrellas_fc /tres_estrellas_fc.dump
-
+```
 
 
 
@@ -91,10 +94,11 @@ EVOLUTION API & WEBHOOK
 
 
 
-BASE DE DATOS PostgreSQL
-- Query de PostgreSql para obtener asistencia por mes (procedure asistencia_pivot_by_date)
-´´´
+## BASE DE DATOS PostgreSQL
 
+- Query de PostgreSql para obtener asistencia por mes (procedure asistencia_pivot_by_date)
+
+```
 CREATE OR REPLACE FUNCTION asistencia_pivot_by_date(month_number INT, year_number INT)
 RETURNS JSON AS
 $$
@@ -158,14 +162,14 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-´´´
+```
 
 
 
 
 - Query de PostgreSQL para obtener cuotas por mes (cuotas_x_mes)
 - Procedure para obtener cuotas por mes de alumnos que asistieron al menos una vez dicho mes
-´´´
+```
 CREATE OR REPLACE FUNCTION cuotas_x_mes(
     month_number INT,
     year_number INT
@@ -205,7 +209,7 @@ BEGIN
     WHERE j.id_jugador NOT IN (SELECT id_jugador FROM asistencia_nula_mes_anio);
 END;
 $$;
-´´´
+```
 
 
 
