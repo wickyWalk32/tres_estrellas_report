@@ -1,7 +1,6 @@
-import mysql.connector
+
 import os
 import psycopg2
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment
 
@@ -25,6 +24,8 @@ def crear_excel_cuota(month,year):
     cursor.execute("select * from cuotas_x_mes(%s,%s)",(month,year))
     excel_data = cursor.fetchall()
 
+    if (excel_data == []): return []
+
     meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
     file_path = "Cuotas " + meses[month-1] + ".xlsx"
 
@@ -47,6 +48,6 @@ def crear_excel_cuota(month,year):
     for row in ws["C"]:
         row.alignment = Alignment(horizontal="center")
     wb.save(file_path)
-
+    print('Archivo Creado')
     return file_path
 # Crear Grafico (Columnas Apiladas Horizontal?)

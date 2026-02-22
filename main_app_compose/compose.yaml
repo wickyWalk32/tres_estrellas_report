@@ -16,7 +16,7 @@ services:
       - evolution-network
 
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: evolution_postgres
     restart: always
     volumes:
@@ -25,7 +25,7 @@ services:
       - evolution-network
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: evolution_redis
     restart: always
     command: redis-server --appendonly yes

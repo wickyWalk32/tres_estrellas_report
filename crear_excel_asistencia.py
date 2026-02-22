@@ -1,4 +1,4 @@
-import mysql.connector
+
 from openpyxl.utils import get_column_letter
 from openpyxl import  load_workbook, Workbook
 from openpyxl.chart import BarChart, Reference
@@ -23,7 +23,7 @@ def get_all_asistencias():
         password=password,
         database=db_name
     )
-    cursor = conn.cursor(buffered=True) # Para ejecutar SQL queries
+    cursor = conn.cursor() # Para ejecutar SQL queries
 
 
     cursor.execute("select * from asistencia_pivot()")
@@ -112,29 +112,30 @@ def crear_excel_asistencia(month,year):
         database=db_name
     )
     cursor2 = conn.cursor()
-
     cursor2.execute("select * from asistencia_pivot_by_date(%s, %s)", (month, year))
     data = cursor2.fetchall()
-    print(data[0][0])
+
     cursor2.close()
     conn.close()
 
     meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
     file_path = "Asistencia " + meses[month-1] + ".xlsx"
 
-    players = data[0][0]
-    players_sorted = sorted(players, key=lambda x: x['id_jugador'])
+    players_attendance = data[0][0] if data and data[0] else []
+
+    if(players_attendance == []): return []
+    attendance_sorted = sorted(players_attendance, key=lambda x: x['id_jugador'])
 
     date_keys = sorted(
-        k for k in players_sorted[0]
+        k for k in attendance_sorted[0]
         if k not in ('jugador', 'id_jugador')
     )
 
-    rows = [ [ p['jugador']] + [p[d] for d in date_keys] for p in players_sorted ]
+    rows = [ [ p['jugador']] + [p[d] for d in date_keys] for p in attendance_sorted ]
 
     header = ['Jugador'] + date_keys
     excel_data = [header] + rows
-    # print(excel_data)
+
     crear_archivo(excel_data,file_path)
     generar_grafico(excel_data,file_path)
 

@@ -35,7 +35,7 @@ docker build -t reporte_tres_estrellas .
 docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tres_estrellas
 # (muy importante ponerle el nombre al contenedor)
 
-```bash
+
 # Conectar app a la network de evolution-api
 docker network connect network_id reporte_tres_estrellas
 
@@ -48,7 +48,7 @@ docker start reporte_tres_estrellas -a      # Ejecutar contenedor y ver los LOGS
 
 
 
-Si existe una db previa
+# Si existe una db previa
 docker exec -i evolution_postgres psql -U evolution -d tres_estrellas_fc < tres_estrellas_fc.sql
 docker exec -i evolution_postgres pg_restore -U evolution -d tres_estrellas_fc < tres_estrellas_fc.dump
 docker cp tres_estrellas_fc.dump evolution_postgres:/tres_estrellas_fc.dump
@@ -121,6 +121,10 @@ BEGIN
         ORDER BY fecha_practica
     ) sub;
 
+    -- solve error when no coincidences for specified date
+    IF cols IS NULL THEN
+        RETURN '[]'::json;
+    END IF;
 
     sql := format(
     $f$
@@ -159,6 +163,7 @@ BEGIN
 
     EXECUTE sql INTO result;
     RETURN result;
+    RETURN COALESCE(result, '[]'::json);
 END;
 $$
 LANGUAGE plpgsql;
@@ -183,6 +188,19 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 AS $$
 BEGIN
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM cuota c
+        WHERE EXTRACT(YEAR FROM c.fecha_cuota) = year_number
+          AND EXTRACT(MONTH FROM c.fecha_cuota) = month_number
+          AND (c.fecha_cuota IS NOT NULL OR c.valor IS NOT NULL OR c.detalle_pago IS NOT NULL)
+    ) THEN
+        -- Return empty result set
+        RETURN;
+    END IF;
+
+
     RETURN QUERY
     WITH asistencia_nula_mes_anio AS (
         SELECT j.id_jugador
@@ -196,6 +214,7 @@ BEGIN
         GROUP BY j.id_jugador
         HAVING COUNT(jp.id_practica) = 0
     )
+    
     SELECT 
         CONCAT(j.nombre, ' ', j.apellido) AS nombre_y_apellido,
         c.fecha_cuota,
@@ -206,7 +225,7 @@ BEGIN
         ON c.id_jugador = j.id_jugador
         AND EXTRACT(YEAR FROM c.fecha_cuota) = year_number
         AND EXTRACT(MONTH FROM c.fecha_cuota) = month_number
-    WHERE j.id_jugador NOT IN (SELECT id_jugador FROM asistencia_nula_mes_anio);
+    WHERE j.id_jugador NOT IN (SELECT id_jugador FROM asistencia_nula_mes_anio) or c.id_jugador is not null;
 END;
 $$;
 ```

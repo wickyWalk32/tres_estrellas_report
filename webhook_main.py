@@ -18,18 +18,26 @@ grupo_id_tres_estrellas = os.getenv("WHATSAPP_GRUPO_ID_SECRETARIA_TRES_ESTRELLAS
 app = Flask(__name__)
 
 
-def send_excel(id_grupo: str, mensaje: str):
+def send_excel(id_grupo: str, mensaje_especial: str):
     url = f"{evolution_api_url}/message/sendMedia/{instance_evolution_api}"
+    url_send_message = f"{evolution_api_url}/message/sendText/{instance_evolution_api}"
+                            #localhost: 8080 / message / sendText / bot
     headers = {"apikey": apy_key, "Content-Type": "application/json"}
-    print(mensaje)
-    funcion = mensaje.split(":")[0]
-    mes = int(mensaje.split(":")[1])
-    anio = int(mensaje.split(":")[2])
+    funcion, mes, anio = mensaje_especial[0], int(mensaje_especial[1]), int(mensaje_especial[2])
+
     if(funcion=="ASISTENCIA"):
         file_path = crear_excel_asistencia.crear_excel_asistencia(mes, anio)
     elif(funcion=="CUOTA"):
         file_path = crear_excel_cuota.crear_excel_cuota(mes,anio)
-    print("FILE PATH: "+file_path)
+
+    if(file_path == []):
+        print("No file_path")
+        requests.post(url_send_message,
+                      json={"number": id_grupo, "text": "No hay nada en fecha especificada.", "delay":600},
+                      headers=headers )
+        return
+
+    print("FILE PATH: " + file_path)
     with open(file_path, "rb") as f:
         encoded_file = base64.b64encode(f.read()).decode()
     body = {
@@ -50,11 +58,24 @@ def send_excel(id_grupo: str, mensaje: str):
 @app.route('/webhook', methods=['POST'])
 def webhook():
     payload = request.json
-    message = payload["data"]["message"]["conversation"] or payload["data"]["message"]["extendedTextMessage"]
-    remoteJid = payload["data"]["key"]["remoteJid"]
+    message_data = payload.get("data", {}).get("message", {})
+    message = ( message_data.get("conversation") or message_data.get("extendedTextMessage", {}).get("text") )
+    remoteJid = payload.get("data", {}).get("key", {}).get("remoteJid")
 
-    if(remoteJid==grupo_id_test and (message.split(":")[0]=="ASISTENCIA" or message.split(":")[0]=="CUOTA") ):
-        send_excel(remoteJid,message)
+    if not message:
+        return "Ignored (no text)", 200
+
+    special_message = message.split(":")
+
+    if( remoteJid==grupo_id_test and len(special_message) == 3 and special_message[0] in ("ASISTENCIA", "CUOTA") ):
+        try:
+            value1 = int(special_message[1])
+            value2 = int(special_message[2])
+            send_excel(remoteJid, special_message)
+        except Exception as e:
+            print("Error Formato Invalido:",e)
+            return "Error: Formato Invalido", 200
+
 
     return "OK", 200
 

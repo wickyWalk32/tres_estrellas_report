@@ -3,6 +3,7 @@ version: "3.9"
 services:
   evolution-api:
     image: evoapicloud/evolution-api:latest
+    platform: linux/arm64
     container_name: evolution_api
     restart: always
     ports:
@@ -16,19 +17,23 @@ services:
       - evolution-network
 
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: evolution_postgres
     restart: always
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - evolution-network
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: evolution_redis
     restart: always
     command: redis-server --appendonly yes
+    env_file:
+      - .env
     volumes:
       - redis_data:/data
     networks:
