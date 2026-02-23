@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 import crear_excel_cuota
 import crear_excel_asistencia
 import base64
+import init_config
+
+
 
 load_dotenv()
 evolution_api_url = os.getenv("EVOLUTION_API_URL")
@@ -17,11 +20,12 @@ grupo_id_tres_estrellas = os.getenv("WHATSAPP_GRUPO_ID_SECRETARIA_TRES_ESTRELLAS
 
 app = Flask(__name__)
 
+init_config.init()
 
 def send_excel(id_grupo: str, mensaje_especial: str):
     url = f"{evolution_api_url}/message/sendMedia/{instance_evolution_api}"
     url_send_message = f"{evolution_api_url}/message/sendText/{instance_evolution_api}"
-                            #localhost: 8080 / message / sendText / bot
+
     headers = {"apikey": apy_key, "Content-Type": "application/json"}
     funcion, mes, anio = mensaje_especial[0], int(mensaje_especial[1]), int(mensaje_especial[2])
 
