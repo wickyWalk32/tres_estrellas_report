@@ -43,7 +43,7 @@ services:
       - evolution-network
 
   reportes_tres_estrellas:
-    image: elelbah43do/reporte_tres_estrellas:1.11
+    image: elelbah43do/reporte_tres_estrellas:1.12
     container_name: reporte_tres_estrellas
     restart: always
     env_file:
