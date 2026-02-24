@@ -28,11 +28,12 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 #(en carpeta de docker-compose.yaml de evolution api)  
 docker compose up  
 
-# ( En carpta de Dockerfile ) Crear imagen
+# ( En carpta de Dockerfile ) Crear imagen (-t es tag)
 docker build -t reporte_tres_estrellas .
 
 
 docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tres_estrellas
+docker run --name reporte_tres_estrellas --env-file .env --network evolution-network  reporte_tres_estrellas
 # (muy importante ponerle el nombre al contenedor)
 
 
@@ -229,6 +230,4 @@ BEGIN
 END;
 $$;
 ```
-
-
 

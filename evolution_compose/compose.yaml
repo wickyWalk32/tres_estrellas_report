@@ -6,8 +6,6 @@ services:
     platform: linux/arm64
     container_name: evolution_api
     restart: always
-    ports:
-      - "8080:8080"
     env_file:
       - .env
     depends_on:
@@ -45,5 +43,6 @@ volumes:
 
 networks:
   evolution-network:
+    name: evolution-network
     driver: bridge
 
