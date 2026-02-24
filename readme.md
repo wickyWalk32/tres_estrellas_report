@@ -32,7 +32,6 @@ docker compose up
 docker build -t reporte_tres_estrellas .
 
 
-docker run --name reporte_tres_estrellas -p 5000:5000 --env-file .env reporte_tres_estrellas
 docker run --name reporte_tres_estrellas --env-file .env --network evolution-network  reporte_tres_estrellas
 # (muy importante ponerle el nombre al contenedor)
 
@@ -63,18 +62,6 @@ docker exec -it evolution_postgres pg_restore -U evolution -d tres_estrellas_fc 
 
 
 
-
-- 
-- Archivo .env  VARIABLES DE AMBIENTE
-
-
-EVOLUTION_API_URL= http://localhost:9090 (ejemplo) // url donde se ejecuta evolution api
-WHATSAPP_GRUPO_ID_SECRETARIA_TRES_ESTRELLAS=numero@g.us //id del grupo tres estrellas
-
-en EVOLUTION API
-webhook url: http://reporte_tres_estrellas:5000/webhook
-
-
 EVOLUTION API & WEBHOOK
 | Field                          | Meaning                    |
 | ------------------------------ | -------------------------- |
@@ -84,12 +71,6 @@ EVOLUTION API & WEBHOOK
 | `@lid`                         | Linked device ID           | NO  usar (cambian valores por sesion)
 | `@g.us`                        | Group                      | Usar para grupos
 | `@s.whatsapp.net`              | Phone number               | Usar para chats privados
-
-
-
-
-
-
 
 
 

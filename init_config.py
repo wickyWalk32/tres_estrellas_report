@@ -2,7 +2,17 @@ import requests
 from dotenv import load_dotenv
 import os
 import qrcode
+import time
+import logging
+import sys
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    stream=sys.stdout
+)
+
+logging.info("App started")
 
 load_dotenv()
 
@@ -75,6 +85,7 @@ def print_qr(qr_code_text):
 
 
 def init():
+    check_evolution_api()
     for x in range(5):
         if(connect()):
             print("Conexion Exitosa")
@@ -99,5 +110,17 @@ def get_webhook():
     print("GET WEBHOOK")
     response = requests.get(url_webhook_find, headers={"apikey":api_key})
     print(response.json())
+
+
+def check_evolution_api():
+    print("Chequeando Disponibilidad")
+    while True:
+        try:
+            print("Chequeo")
+            requests.get(host, headers={"apikey": api_key}, timeout=5)
+            return
+        except requests.exceptions.RequestException:
+            print("Evolution Api todavia no inicio")
+            time.sleep(15)
 
 # init()

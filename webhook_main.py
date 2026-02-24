@@ -16,7 +16,7 @@ evolution_api_url = os.getenv("EVOLUTION_API_URL")
 instance_evolution_api = os.getenv("INSTANCE_EVOLUTION_API")
 apy_key = os.getenv("API_KEY")
 grupo_id_test = os.getenv("WHATSAPP_GRUPO_ID_TEST")
-grupo_id_tres_estrellas = os.getenv("WHATSAPP_GRUPO_ID_SECRETARIA_TRES_ESTRELLAS")
+grupo_id = os.getenv("WHATSAPP_GRUPO_ID")
 
 app = Flask(__name__)
 
@@ -71,7 +71,7 @@ def webhook():
 
     special_message = message.split(":")
 
-    if( remoteJid==grupo_id_test and len(special_message) == 3 and special_message[0] in ("ASISTENCIA", "CUOTA") ):
+    if((remoteJid==grupo_id_test or remoteJid==grupo_id) and len(special_message) == 3 and special_message[0] in ("ASISTENCIA", "CUOTA") ):
         try:
             value1 = int(special_message[1])
             value2 = int(special_message[2])
